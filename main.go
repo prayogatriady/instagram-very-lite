@@ -5,8 +5,8 @@ import (
 	"os"
 	"test-mongodb/controller"
 	"test-mongodb/database"
-	"test-mongodb/middleware"
 	"test-mongodb/repository"
+	"test-mongodb/routes"
 	"test-mongodb/service"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +30,6 @@ func main() {
 
 	databaseName := "mongo-golang"
 	collectionName := "users"
-
 	db := database.DBInit(databaseName, collectionName)
 	validate := validator.New()
 
@@ -38,24 +37,13 @@ func main() {
 	userService := service.NewUserService(userRepository, *validate)
 	userController := controller.NewUserController(userService)
 
-	r := gin.New()
+	router := gin.New()
+	router.Use(gin.Logger())
+	routes.AuthRoutes(router, userController)
+	routes.UserRoutes(router, userController)
 
-	r.Use(gin.Logger())
-
-	r.POST("/signup", userController.Signup)
-	r.POST("/login", userController.Login)
-	r.POST("/logout", userController.Logout)
-
-	r.Use(middleware.AuthMiddleware)                 // middleware, all the endpoints below access this
-	r.GET("/users", userController.FindAllUser)      // get all users, user_type must be admin
-	r.GET("/profile", userController.Profile)        // get profile detail, included feeds
-	r.PUT("/edit", userController.EditProfile)       // edit profile
-	r.DELETE("/delete", userController.DeleteUser)   // delete/deactivate profile
-	r.POST("/createfeed", userController.CreateFeed) // post feed
-
-	log.Printf("Server running on Port %s.. \n", port)
-
-	err = r.Run(":" + port)
+	log.Printf("Server running on port %s.. \n", port)
+	err = router.Run(":" + port)
 	if err != nil {
 		log.Fatalf("Error when running port %s \n", port)
 	}
